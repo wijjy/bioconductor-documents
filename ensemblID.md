@@ -38,6 +38,16 @@ This package is describes as
 
 This package allows you to look up some information based on the Ensembl ID.
 
+All this stuff seems to be included in the `Mus.musculus` package.  This is a package which
+abstracts a number of _Mus musculus_ packages within bioconductor.  Information about
+functionality is in the [AnnotationDbi](https://bioconductor.org/packages/release/bioc/html/AnnotationDbi.html) documentation, which includes a 
+[video](https://www.youtube.com/watch?v=8qvGNTVz3Ik). 
+
+The `Mus.musculus` package removes some of the work done at the end of this file as it seems to automate the 
+work that I was doing by hand.  I have had little success in getting it to work with the Ontology - acually not true, 
+it works fine with the ontology if it is small enough.
+
+
 ```{r}
 require(org.Mm.eg.db)
 yy <- as.list(org.Mm.egENSEMBL2EG)
