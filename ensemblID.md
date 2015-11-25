@@ -24,7 +24,7 @@ chr1	|34184301|	34188400
 chr1	|38493701|	38497600
 
 
-I want to know something about the relatiionship between the quantitative data and the locations.  (There is other data and other information, the problem is not so open ended).  
+I want to know something about the relationship between the quantitative data and the locations.  (There is other data and other information, the problem is not so open ended).  
 
 ## Question 1: How do I get locations for the genes in mm9 from the ensembl ID?
 
@@ -44,8 +44,73 @@ functionality is in the [AnnotationDbi](https://bioconductor.org/packages/releas
 [video](https://www.youtube.com/watch?v=8qvGNTVz3Ik). 
 
 The `Mus.musculus` package removes some of the work done at the end of this file as it seems to automate the 
-work that I was doing by hand.  I have had little success in getting it to work with the Ontology - acually not true, 
-it works fine with the ontology if it is small enough.
+work that I was doing by hand.  
+
+
+```
+require(Mus.musculus)
+columns(Mus.musculus)
+```
+
+Output:
+
+```
+ [1] "ACCNUM"       "ALIAS"        "CDSCHROM"     "CDSEND"       "CDSID"        "CDSNAME"      "CDSSTART"     "CDSSTRAND"   
+ [9] "DEFINITION"   "ENSEMBL"      "ENSEMBLPROT"  "ENSEMBLTRANS" "ENTREZID"     "ENZYME"       "EVIDENCE"     "EVIDENCEALL" 
+[17] "EXONCHROM"    "EXONEND"      "EXONID"       "EXONNAME"     "EXONRANK"     "EXONSTART"    "EXONSTRAND"   "GENEID"      
+[25] "GENENAME"     "GO"           "GOALL"        "GOID"         "IPI"          "MGI"          "ONTOLOGY"     "ONTOLOGYALL" 
+[33] "PATH"         "PFAM"         "PMID"         "PROSITE"      "REFSEQ"       "SYMBOL"       "TERM"         "TXCHROM"     
+[41] "TXEND"        "TXID"         "TXNAME"       "TXSTART"      "TXSTRAND"     "TXTYPE"       "UNIGENE"      "UNIPROT"  
+```
+
+And we can find out those that can be used as keys
+
+```
+keytypes(Mus.musculus)
+ [1] "ACCNUM"       "ALIAS"        "CDSID"        "CDSNAME"      "DEFINITION"   "ENSEMBL"      "ENSEMBLPROT"  "ENSEMBLTRANS"
+ [9] "ENTREZID"     "ENZYME"       "EVIDENCE"     "EVIDENCEALL"  "EXONID"       "EXONNAME"     "GENEID"       "GENENAME"    
+[17] "GO"           "GOALL"        "GOID"         "IPI"          "MGI"          "ONTOLOGY"     "ONTOLOGYALL"  "PATH"        
+[25] "PFAM"         "PMID"         "PROSITE"      "REFSEQ"       "SYMBOL"       "TERM"         "TXID"         "TXNAME"      
+[33] "UNIGENE"      "UNIPROT"     
+```
+
+This is clearly the way to go.
+
+So my approach:
+
+### Select the genes using SYMBOL (can also be sone with ensembl ID)
+
+```{r}
+res.down <- select(Mus.musculus, keys=paste(down$gene_symbol), columns=c("CDSCHROM", "CDSSTART", "CDSEND", "CDSSTRAND","REFSEQ","GENEID", "GENENAME"), keytype="SYMBOL")
+```
+
+### Turn these to GRanges
+
+```{r}
+mus.down <- GRanges(seqnames=res.down$CDSCHROM, IRanges(start=res.down$CDSSTART, end=res.down$CDSEND, name=res.down$SYMBOL), strand=res.down$CDSSTRAND, geneid=res.down$GENEID)
+```
+
+### Find overlaps between these and the target
+
+```{r}
+overDown <- findOverlaps(promoters(mus.down), regions10)
+overSYMBOL <- names(mus.down)[queryHits(overDown)]
+```
+
+### And get the results for those keys
+
+```
+target <- select(Mus.musculus, 
+                 keys=paste(overSYMBOL), 
+                 columns=c("GENEID", "GENENAME", "GO", "CDSCHROM", "CDSSTART", "CDSEND", "ENSEMBL", "PATH"), 
+                 keytype="SYMBOL")
+```
+
+
+***
+
+
+## Old Code That may Still be useful
 
 
 ```{r}
@@ -53,6 +118,7 @@ require(org.Mm.eg.db)
 yy <- as.list(org.Mm.egENSEMBL2EG)
 yy[["ENSMUSG00000053024"]]
 ```
+
 Gives "21367", which is the entrez ID of this gene.  We can see this 
 using
 
@@ -73,19 +139,4 @@ ts <- transcripts(txdb, columns="gene_id")
 This gives all the transcripts for these data.  I can then just select those that are in the target data by matching on gene_id.
 
 This seems to lose most of the data and from the original 2658 rows I end up with 231 which suggests that I am missing something here. 
-
-```{r}
-```
-
-
-
-GenomicRanges
-
-TxDb.Mmusculus.UCSC.mm9.knownGene
-org.Mm.eg.db
-
-
-```
-
-These are all interesting questions.  
 
