@@ -110,6 +110,90 @@ target <- select(Mus.musculus,
 ***
 
 
+
+Older Libraries
+================
+
+
+The information we have from the experiment in terms of selecting genes
+are the ENSEMBL ID's and the and the gene symbol.  Now both of these are available in
+the `org.Mm.eg.db` library.   
+
+### Transcript libraries
+
+```
+require("TxDb.Mmusculus.UCSC.mm9.knownGene")
+txdb <- TxDb.Mmusculus.UCSC.mm9.knownGene
+txdb
+keytypes(txdb)
+```
+
+
+
+
+```
+columns(txdb)
+keytypes(txdb)
+```
+
+The key column is going to be GENEID, which is the ENTREZ gene ID, which is also available in the `org.Mm.eg.db` library.
+
+### Gene information
+
+```
+require(org.Mm.eg.db)
+ls(2)
+columns(org.Mm.eg.db)
+keytypes(org.Mm.eg.db)
+ky <- keys(org.Mm.eg.db, keytype="ENTREZID")
+```
+
+
+```
+s <- select(org.Mm.eg.db, 
+       keys=paste(down$Ensembl.ID),
+       columns=c("ENTREZID", "GENENAME"),
+       keytype="ENSEMBL")
+s <- s[!is.na(s$ENTREZID),]
+
+```
+
+Now we need to be able to merge tables
+
+```
+GR <- transcripts(txdb)
+s2 <- select(txdb,
+             keys=s$ENTREZID,
+             columns=c("TXCHROM", "TXSTART", "TXEND","TXSTRAND"),
+             keytype="GENEID")
+
+s3 <- merge(s,s2,by.x="ENTREZID", by.y="GENEID")
+
+## Now turn into sequences
+
+```
+s3 <- s3[complete.cases(s3),]
+mus.down <- GRanges(seqnames=s3$TXCHROM, IRanges(start=s3$TXSTART, end=s3$TXEND, name=s3$ENSEMBL), strand=s3$TXSTRAND, geneid=s3$ENTREZID)
+
+
+overDown <- findOverlaps(promoters(mus.down), regions)
+overSYMBOL <- names(mus.down)[queryHits(overDown)]
+overRegions <- regions[subjectHits(overDown)]
+
+```
+
+
+
+Now write the results out
+
+```{r}
+target <- select(Mus.musculus, 
+                 keys=paste(overSYMBOL), 
+                 columns=c("GENEID", "GENENAME", "GO", "TXCHROM", "TXSTART", "TXEND", "ENSEMBL", "PATH"), 
+                 keytype="SYMBOL")
+```
+
+
 ## Old Code That may Still be useful
 
 
@@ -136,7 +220,4 @@ txdb <- TxDb.Mmusculus.UCSC.mm9.knownGene
 ts <- transcripts(txdb, columns="gene_id")
 ```
 
-This gives all the transcripts for these data.  I can then just select those that are in the target data by matching on gene_id.
-
-This seems to lose most of the data and from the original 2658 rows I end up with 231 which suggests that I am missing something here. 
 
